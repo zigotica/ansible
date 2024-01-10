@@ -1,0 +1,5 @@
+# Facts output files
+facts*.json
+
+# Secrets
+.vault-password

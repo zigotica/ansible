@@ -1,0 +1,37 @@
+---
+
+- name: Setup SSH
+  hosts: servers
+  gather_facts: no
+  vars_files:
+    - ../vars/vault.yml
+  remote_user: "{{ z_user }}"
+  tasks:
+
+  - name: Copy SSH config and complete key to server
+    copy: 
+      src: "{{ item }}" 
+      dest: "{{ z_ssh_to_dir }}/"
+      mode: 0600
+      owner: "{{ z_user }}"
+    loop:
+      - "{{ z_ssh_from_dir }}/config"
+      - "{{ z_ssh_from_dir }}/{{ z_ssh_key }}.pub"
+      - "{{ z_ssh_from_dir }}/{{ z_ssh_key }}"
+    register: copiedssh
+
+  - name: Restart SSH service if needed
+    become: true
+    ansible.builtin.service:
+      name: ssh
+      state: restarted
+      enabled: true
+    when: copiedssh.changed
+
+  - name: Change sudoers to allow passwordless sudo for {{ z_user }}
+    become: true
+    copy:
+      dest: "/etc/sudoers.d/passwordless_sudo_{{ z_user }}"
+      content: "{{ z_user }} ALL=(ALL) NOPASSWD: ALL"
+      validate: /usr/sbin/visudo -cf %s
+

@@ -1,0 +1,56 @@
+---
+
+- name: Setup Environment variables
+  hosts: servers
+  gather_facts: no
+  vars_files:
+    - ../vars/vault.yml
+  remote_user: "{{ z_user }}"
+  become: yes
+  tasks:
+
+    - name: populate /etc/environment
+      vars:
+        me: "{{ inventory_hostname }}"
+      lineinfile:
+        path: "/etc/environment"
+        state: present
+        regexp: "^{{ item.key }}="
+        line: "{{ item.key }}=\"{{ item.value}}\""
+      loop:
+      - key: Z_USER 
+        value : "{{ z_user }}"
+      - key: Z_IP_UNIFI 
+        value : "{{ lookup('vars', 'z_ip_unifi_' + me) }}"
+      - key: Z_IP_PIHOLE 
+        value : "{{ lookup('vars', 'z_ip_pihole_' + me) }}"
+      - key: Z_HOST_PIHOLE 
+        value : "{{ lookup('vars', 'z_host_pihole_' + me) }}"
+      - key: Z_IP_UPTIME 
+        value : "{{ lookup('vars', 'z_ip_uptime_' + me) }}"
+      - key: Z_IP_SPEEDTEST
+        value : "{{ lookup('vars', 'z_ip_speedtest_' + me) }}"
+      - key: Z_IP_DASHBOARD
+        value : "{{ lookup('vars', 'z_ip_dashboard_' + me) }}"
+      - key: Z_IP_HA
+        value : "{{ lookup('vars', 'z_ip_ha_' + me) }}"
+      - key: Z_IP_DUPLICATI
+        value : "{{ lookup('vars', 'z_ip_duplicati_' + me) }}"
+      - key: Z_IP_VAULTWARDEN
+        value : "{{ lookup('vars', 'z_ip_vaultwarden_' + me) }}"
+      - key: Z_IP_PROMETHEUS
+        value : "{{ lookup('vars', 'z_ip_prometheus_' + me) }}"
+      - key: Z_IP_GRAFANA
+        value : "{{ lookup('vars', 'z_ip_grafana_' + me) }}"
+      - key: Z_IP_CLOUDFLARE
+        value : "{{ lookup('vars', 'z_ip_cloudflare_' + me) }}"
+      - key: Z_IP_REVERSE
+        value : "{{ lookup('vars', 'z_ip_reverse_' + me) }}"
+      - key: Z_IP_PORTAINER
+        value : "{{ lookup('vars', 'z_ip_portainer_' + me) }}"
+      register: envvars
+
+    - name: Reboot the server
+      reboot:
+        msg: "Reboot initiated by Ansible due to updates to environment variables"
+      when: envvars.changed

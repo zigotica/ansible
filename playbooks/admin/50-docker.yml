@@ -1,0 +1,96 @@
+---
+
+- name: Setup Docker
+  hosts: fallback
+  gather_facts: no
+  become: true
+  vars_files:
+    - ../vars/vault.yml
+  remote_user: "{{ z_user }}"
+  tasks:
+
+    - name: Ensure old versions of Docker are not installed
+      apt:
+        name:
+          - docker
+          - docker.io
+          - docker-engine
+        state: absent
+
+    - name: Stop Docker service
+      ansible.builtin.service:
+        name: docker
+        state: stopped
+      register: docker_service_result
+      failed_when: "docker_service_result is failed and 'Could not find the requested service' not in docker_service_result.msg"
+
+    - name: Install required dependencies
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+          - curl
+        state: latest
+        update_cache: true
+
+    - name: Add Docker GPG apt key
+      apt_key:
+        url: "https://download.docker.com/linux/{{ z_distribution }}/gpg"
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch={{ z_apt_arch }}] https://download.docker.com/linux/{{ z_distribution }} {{ z_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - docker-ce-rootless-extras
+          - containerd.io
+        state: latest
+        update_cache: true
+
+    - name: Create docker group
+      group:
+        name: docker
+        state: present
+        system: yes
+
+    - name: Add users to docker group (will need a reboot)
+      user:
+        name: "{{ z_user }}"
+        groups: docker
+        append: yes
+
+    - name: Install Docker Compose
+      vars:
+        dc_repo: "https://github.com/docker/compose/releases/download"
+        dc_url: "{{ dc_repo }}/{{ z_compose_vs }}/docker-compose-linux-{{ z_arch }}"
+        dc_path: /usr/local/bin/docker-compose
+      get_url:
+        url: "{{ dc_url }}"
+        dest: "{{ dc_path }}"
+        mode: 0755
+
+    - name: Restart Docker service
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Create the network to be used by the docker compose containers
+      vars:
+        me: "{{ inventory_hostname }}"
+      community.docker.docker_network:
+        name: dockernet
+        driver: "{{ z_network_driver }}"
+        driver_options:
+          parent: "{{ lookup('vars', 'z_network_parent_' + me) }}"
+        ipam_config:
+        - subnet: "{{ z_network_ip_range }}.0/24"
+          gateway: "{{ z_network_ip_range }}.1"
+          iprange: "{{ z_network_ip_range }}.{{ lookup('vars', 'z_network_ip_' + me) }}"

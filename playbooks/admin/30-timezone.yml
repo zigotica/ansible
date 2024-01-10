@@ -1,0 +1,33 @@
+---
+
+- name: Set timezone and configure timesyncd
+  hosts: servers
+  gather_facts: no
+  vars_files:
+    - ../vars/vault.yml
+  remote_user: "{{ z_user }}"
+  become: yes
+  tasks:
+
+    - name: Stop timesyncd
+      systemd:
+        name: systemd-timesyncd.service
+        state: stopped
+    
+    - name: Set timezone
+      shell: timedatectl set-timezone CET
+    
+    - name: Customize NTP in timesyncd.conf
+      lineinfile:
+        path: "/etc/systemd/timesyncd.conf"
+        state: present
+        regexp: "^{{ item.key }}="
+        line: "{{ item.key }}={{ item.value}}"
+      loop:
+      - key: "NTP" 
+        value : "{{ z_ntp }}"
+
+    - name: Start timesyncd
+      systemd:
+        name: systemd-timesyncd.service
+        state: started

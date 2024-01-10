@@ -1,0 +1,9 @@
+---
+
+- name: Ping all hosts
+  hosts: all
+  tasks:
+
+    - name: Print the address for each host
+      ansible.builtin.debug:
+        msg: Host {{ inventory_hostname }} has address {{ ansible_default_ipv4.address }}

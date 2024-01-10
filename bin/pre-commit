@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+# modified by zigotica from:
+# https://blog.ktz.me/secret-management-with-docker-compose-and-ansible/
+
+# Colors to create a prettier output
+RED="$(tput setaf 1)"
+GRN="$(tput setaf 2)"
+YEL="$(tput setaf 3)"
+BLU="$(tput setaf 4)"
+RST="$(tput sgr0)"
+
+
+if ( cat playbooks/vars/vault.yml | grep -q "\$ANSIBLE_VAULT;" ); then
+  echo -ne "\n${GRN}Vault Encrypted. Safe to commit.${RST}"
+  echo -ne "\n${YEL}Proceeding to commit ...${RST}\n"
+else
+  echo -ne "\n${RED}Vault not encrypted! Commit failed.${RST}"
+  echo -ne "\n\nRun the following command and try again:"
+  echo -ne "\n\$ ${BLU}make encrypt${RST}"
+  exit 1
+fi

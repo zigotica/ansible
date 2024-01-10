@@ -1,0 +1,24 @@
+---
+
+- name: Ping all hosts and learn about them
+  hosts: all
+  tasks:
+
+    - name: Populate service facts
+      service_facts:
+
+    - name: Classify hosts depending on their OS distribution
+      ansible.builtin.group_by:
+        key: os_{{ ansible_facts['distribution'] | lower }}
+
+    - name: Save general facts to host specific file
+      copy:
+        content: "{{ hostvars[inventory_hostname] | to_nice_json }}"
+        dest: "../facts.{{ ansible_fqdn }}.json"
+      delegate_to: localhost
+
+    - name: Save services facts to host specific file
+      copy:
+        content: "{{ ansible_facts | to_nice_json }}"
+        dest: "../facts.services.{{ ansible_fqdn }}.json"
+      delegate_to: localhost

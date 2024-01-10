@@ -1,0 +1,15 @@
+---
+
+- name: Setup Docker compose files from git repository
+  hosts: servers
+  gather_facts: no
+  tasks:
+
+  - name: Clone main branch from homelab repo at github
+    become: no
+    ansible.builtin.git:
+      repo: git@github.com:zigotica/homelab.git
+      dest: "/home/{{ z_user }}/containers"
+      single_branch: yes
+      version: main
+      accept_hostkey: yes

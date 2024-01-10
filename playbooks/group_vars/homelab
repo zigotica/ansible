@@ -1,0 +1,3 @@
+z_arch: x86_64
+z_distribution: debian
+z_distribution_release: bookworm

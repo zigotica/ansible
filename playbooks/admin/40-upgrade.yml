@@ -1,0 +1,63 @@
+---
+
+- name: Keep system up-to-date
+  hosts: servers
+  vars_files:
+    - ../vars/vault.yml
+  remote_user: "{{ z_user }}"
+  become: yes
+  vars:
+    stop_services:
+      - apt-daily.timer
+      - apt-daily-upgrade.timer
+  tasks:
+
+    - name: Populate service facts
+      service_facts:
+
+    - name: Stop auto upgrade related services listed above
+      service:
+        name: "{{ item }}"
+        state: stopped
+        enabled: false
+      when: "item in service_names"
+      loop: "{{ stop_services }}"
+      vars:
+        service_names: "{{ services|dict2items|map(attribute='value.name')|list }}"
+      register: auto_upgrade_services
+
+    - name: Reload systemctl daemon if needed to re-read configs
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+      when: auto_upgrade_services.changed
+
+    - name: Remove unattended upgrades
+      apt:
+        name:
+          - unattended-upgrades
+        state: absent
+        purge: true
+        update_cache: true
+
+    - name: Update repository index, cleanup
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+        autoclean: yes
+        autoremove: yes
+        cache_valid_time: 3600
+
+    - name: Upgrade packages
+      apt:
+        name: "*"
+        state: latest
+
+    - name: Check if a reboot is needed
+      register: reboot_required_file
+      stat:
+        path: /var/run/reboot-required
+
+    - name: Reboot the server if needed
+      reboot:
+        msg: "Reboot initiated by Ansible due to kernel updates"
+      when: reboot_required_file.stat.exists == true
