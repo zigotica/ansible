@@ -18,7 +18,32 @@
       - "{{ z_ssh_from_dir }}/config"
       - "{{ z_ssh_from_dir }}/{{ z_ssh_key }}.pub"
       - "{{ z_ssh_from_dir }}/{{ z_ssh_key }}"
-    register: copiedssh
+    register: sshcopied
+
+  - name: Restrict sshd configuration
+    become: true
+    lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: "{{ item.regexp }}"
+      line: "{{ item.line }}"
+      mode: 0640
+      validate: /usr/sbin/sshd -T -f %s
+    with_items:
+      - regexp: '^PermitRootLogin'
+        line: 'PermitRootLogin prohibit-password'
+      - regexp: '^PasswordAuthentication'
+        line: 'PasswordAuthentication no'
+      - regexp: '^PermitEmptyPasswords'
+        line: 'PermitEmptyPasswords no'
+    register: sshd
+
+  - name: Change sudoers to allow passwordless sudo for {{ z_user }}
+    become: true
+    copy:
+      dest: "/etc/sudoers.d/passwordless_sudo_{{ z_user }}"
+      content: "{{ z_user }} ALL=(ALL) NOPASSWD: ALL"
+      mode: 0440
+      validate: /usr/sbin/visudo -c -f %s
 
   - name: Restart SSH service if needed
     become: true
@@ -26,12 +51,5 @@
       name: ssh
       state: restarted
       enabled: true
-    when: copiedssh.changed
-
-  - name: Change sudoers to allow passwordless sudo for {{ z_user }}
-    become: true
-    copy:
-      dest: "/etc/sudoers.d/passwordless_sudo_{{ z_user }}"
-      content: "{{ z_user }} ALL=(ALL) NOPASSWD: ALL"
-      validate: /usr/sbin/visudo -cf %s
+    when: sshd.changed or sshcopied.changed
 
