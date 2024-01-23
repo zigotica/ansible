@@ -1,11 +1,11 @@
 ---
 
 - name: Setup Docker
-  hosts: fallback
+  hosts: all
   gather_facts: no
   become: true
   vars_files:
-    - ../vars/vault.yml
+    - vars/vault.yml
   remote_user: "{{ z_user }}"
   tasks:
 
@@ -53,6 +53,7 @@
           - containerd.io
         state: latest
         update_cache: true
+      register: install_docker
 
     - name: Create docker group
       group:
@@ -75,6 +76,7 @@
         url: "{{ dc_url }}"
         dest: "{{ dc_path }}"
         mode: 0755
+      register: install_dockercompose
 
     - name: Restart Docker service
       ansible.builtin.service:
@@ -83,6 +85,7 @@
         enabled: true
 
     - name: Create the network to be used by the docker compose containers
+      when: inventory_hostname in groups["servers"]
       vars:
         me: "{{ inventory_hostname }}"
       community.docker.docker_network:
@@ -94,3 +97,8 @@
         - subnet: "{{ z_network_ip_range }}.0/24"
           gateway: "{{ z_network_ip_range }}.1"
           iprange: "{{ z_network_ip_range }}.{{ lookup('vars', 'z_network_ip_' + me) }}"
+
+    - name: Reboot the server after docker installed
+      reboot:
+        msg: "Reboot initiated by Ansible due to updates to dependencies"
+      when: install_docker.changed or install_dockercompose.changed

@@ -4,7 +4,7 @@
   hosts: servers
   gather_facts: no
   vars_files:
-    - ../vars/vault.yml
+    - vars/vault.yml
   remote_user: "{{ z_user }}"
   become: yes
   tasks:
@@ -48,6 +48,18 @@
         value : "{{ lookup('vars', 'z_ip_reverse_' + me) }}"
       - key: Z_IP_PORTAINER
         value : "{{ lookup('vars', 'z_ip_portainer_' + me) }}"
+      - key: HOMEPAGE_VAR_FW_NAME
+        value: "{{ z_dash_widgets_fw_name }}"
+      - key: HOMEPAGE_VAR_FW_IP
+        value: "{{ z_dash_widgets_fw_ip }}"
+      - key: HOMEPAGE_VAR_FW_KEY
+        value: "{{ z_dash_widgets_fw_key }}"
+      - key: HOMEPAGE_VAR_FW_SECRET
+        value: "{{ z_dash_widgets_fw_secret }}"
+      - key: HOMEPAGE_VAR_PIHOLE_IP
+        value: "{{ lookup('vars', 'z_ip_pihole_' + me) }}"
+      - key: HOMEPAGE_VAR_PIHOLE_KEY
+        value: "{{ z_dash_widgets_pihole_api }}"
       register: envvars
 
     - name: Reboot the server

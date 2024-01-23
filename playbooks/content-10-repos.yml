@@ -2,6 +2,9 @@
 
 - name: Setup Docker compose files from git repository
   hosts: servers
+  vars_files:
+    - vars/vault.yml
+  remote_user: "{{ z_user }}"
   gather_facts: no
   tasks:
 
